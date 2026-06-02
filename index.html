@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Programme Abhyudaya — IDP Booking</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --purple: #534AB7; --purple-light: #EEEDFE; --purple-dark: #3C3489;
+    --teal: #1D9E75; --teal-light: #E1F5EE; --teal-dark: #0F6E56;
+    --red: #A32D2D; --red-light: #FCEBEB;
+    --amber: #BA7517; --amber-light: #FAEEDA;
+    --text: #1a1a1a; --text-muted: #6b7280; --text-faint: #9ca3af;
+    --border: #e5e7eb; --border-strong: #d1d5db;
+    --bg: #ffffff; --bg-soft: #f9fafb; --bg-medium: #f3f4f6;
+    --radius: 8px; --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  body { font-family: var(--font); color: var(--text); background: var(--bg-soft); min-height: 100vh; }
+  .header { background: var(--bg); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-logo { width: 32px; height: 32px; background: var(--purple); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; font-weight: 600; }
+  .header-title { font-size: 15px; font-weight: 500; }
+  .header-sub { font-size: 12px; color: var(--text-muted); }
+  .admin-toggle { font-size: 12px; color: var(--text-faint); background: none; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  .admin-toggle:hover { color: var(--purple); border-color: var(--purple); }
+  .container { max-width: 680px; margin: 0 auto; padding: 32px 24px; }
+  .steps { display: flex; align-items: center; margin-bottom: 32px; }
+  .step-item { display: flex; align-items: center; gap: 8px; flex: 1; }
+  .step-circle { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: var(--text-muted); background: var(--bg); flex-shrink: 0; transition: all 0.2s; }
+  .step-item.active .step-circle { background: var(--purple); border-color: var(--purple); color: white; }
+  .step-item.done .step-circle { background: var(--teal); border-color: var(--teal); color: white; }
+  .step-label { font-size: 12px; color: var(--text-muted); }
+  .step-item.active .step-label { color: var(--purple); font-weight: 500; }
+  .step-line { flex: 1; height: 1px; background: var(--border); margin: 0 8px; }
+  .card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px; }
+  .card-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .card-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .form-input { width: 100%; height: 40px; border: 1px solid var(--border); border-radius: var(--radius); padding: 0 12px; font-size: 14px; font-family: var(--font); color: var(--text); background: var(--bg); transition: border-color 0.15s; outline: none; }
+  .form-input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(83,74,183,0.08); }
+  .error-msg { font-size: 12px; color: var(--red); margin-top: 4px; display: none; }
+  .error-msg.show { display: block; }
+  .slots-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-btn { font-size: 12px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; background: var(--bg); cursor: pointer; color: var(--text-muted); transition: all 0.15s; }
+  .filter-btn:hover { border-color: var(--purple); color: var(--purple); }
+  .filter-btn.active { background: var(--purple-light); border-color: var(--purple); color: var(--purple-dark); font-weight: 500; }
+  .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-bottom: 20px; max-height: 380px; overflow-y: auto; }
+  .slot-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; cursor: pointer; background: var(--bg); transition: all 0.15s; }
+  .slot-card:hover:not(.booked) { border-color: var(--purple); }
+  .slot-card.selected { border: 2px solid var(--purple); background: var(--purple-light); }
+  .slot-card.booked { opacity: 0.45; cursor: not-allowed; background: var(--bg-medium); }
+  .slot-consultant { font-size: 11px; font-weight: 500; color: var(--purple); margin-bottom: 4px; }
+  .slot-date { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .slot-time { font-size: 12px; color: var(--text-muted); }
+  .slot-booked-tag { font-size: 10px; color: var(--text-faint); margin-top: 4px; }
+  .no-slots { text-align: center; padding: 40px 20px; color: var(--text-faint); font-size: 14px; grid-column: 1/-1; }
+  .btn { height: 40px; border-radius: var(--radius); font-size: 14px; font-weight: 500; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; padding: 0 20px; font-family: var(--font); }
+  .btn-primary { background: var(--purple); color: white; width: 100%; }
+  .btn-primary:hover { background: var(--purple-dark); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-secondary { background: var(--bg); border: 1px solid var(--border); color: var(--text); }
+  .btn-secondary:hover { border-color: var(--border-strong); background: var(--bg-soft); }
+  .btn-success { background: var(--teal-dark); color: white; }
+  .btn-success:hover { background: #085041; }
+  .btn-danger { background: var(--red-light); color: var(--red); border: 1px solid #f7c1c1; }
+  .btn-danger:hover { background: #f7c1c1; }
+  .review-table { width: 100%; border-collapse: collapse; }
+  .review-table td { padding: 8px 0; font-size: 14px; border-bottom: 1px solid var(--border); }
+  .review-table td:first-child { color: var(--text-muted); width: 130px; }
+  .review-table td:last-child { font-weight: 500; }
+  .review-table tr:last-child td { border-bottom: none; }
+  .success-wrap { text-align: center; padding: 12px 0; }
+  .success-icon { width: 56px; height: 56px; background: var(--teal-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 24px; }
+  .success-title { font-size: 20px; font-weight: 500; margin-bottom: 6px; }
+  .success-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5; }
+  .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .notice { border-radius: var(--radius); padding: 12px 14px; font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+  .notice-amber { background: var(--amber-light); color: #633806; border: 1px solid #FAC775; }
+  .notice-red { background: var(--red-light); color: #501313; border: 1px solid #f7c1c1; }
+  .notice-teal { background: var(--teal-light); color: #04342C; border: 1px solid #5DCAA5; }
+  .notice-purple { background: var(--purple-light); color: var(--purple-dark); border: 1px solid #AFA9EC; }
+  .booking-status-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+  .status-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; margin-bottom: 12px; }
+  .badge-confirmed { background: var(--teal-light); color: var(--teal-dark); }
+  .badge-rescheduled { background: var(--amber-light); color: var(--amber); }
+  .admin-wrap { max-width: 720px; margin: 0 auto; padding: 24px; }
+  .admin-tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .admin-tab { padding: 10px 16px; font-size: 14px; cursor: pointer; border: none; background: none; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; font-family: var(--font); transition: all 0.15s; }
+  .admin-tab.active { color: var(--purple); border-bottom-color: var(--purple); font-weight: 500; }
+  .admin-section-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+  .admin-section-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+  .add-slot-form { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px; }
+  .add-slot-form .form-group { margin-bottom: 0; flex: 1; min-width: 130px; }
+  .consultant-select { height: 40px; border: 1px solid var(--border); border-radius: var(--radius); padding: 0 10px; font-size: 14px; font-family: var(--font); background: var(--bg); color: var(--text); outline: none; min-width: 160px; }
+  .consultant-select:focus { border-color: var(--purple); }
+  .slots-list { display: flex; flex-direction: column; gap: 6px; }
+  .slot-admin-row { display: flex; align-items: center; justify-content: space-between; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; }
+  .slot-admin-left { display: flex; flex-direction: column; gap: 2px; }
+  .slot-admin-name { font-size: 12px; font-weight: 500; color: var(--purple); }
+  .slot-admin-dt { font-size: 13px; }
+  .slot-admin-status { font-size: 11px; }
+  .status-free { color: var(--text-faint); }
+  .status-booked { color: var(--teal-dark); font-weight: 500; }
+  .icon-btn { width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text-muted); transition: all 0.15s; }
+  .icon-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-light); }
+  .bookings-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .bookings-table th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .bookings-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .pill-tag { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+  .tag-confirmed { background: var(--teal-light); color: var(--teal-dark); }
+  .tag-cancelled { background: var(--red-light); color: var(--red); }
+  .tag-rescheduled { background: var(--amber-light); color: var(--amber); }
+  .tag-locked { background: var(--bg-medium); color: var(--text-faint); }
+  .empty-state { text-align: center; padding: 40px; color: var(--text-faint); font-size: 14px; }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 12px; }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 14px; color: var(--text-muted); }
+  .setup-card { max-width: 560px; margin: 60px auto; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; }
+  .setup-title { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+  .setup-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.6; }
+  .setup-step { display: flex; gap: 12px; margin-bottom: 16px; }
+  .setup-num { width: 24px; height: 24px; border-radius: 50%; background: var(--purple-light); color: var(--purple-dark); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .setup-step-text { font-size: 13px; color: var(--text); line-height: 1.6; }
+  code { background: var(--bg-medium); padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
+  .hidden { display: none !important; }
+  .mt-8 { margin-top: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .text-muted { color: var(--text-muted); font-size: 13px; }
+  .text-center { text-align: center; }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Loading...</div>
+</div>
+
+<div id="setup-needed" class="hidden">
+  <div class="setup-card">
+    <div class="setup-title">One-time setup required</div>
+    <div class="setup-sub">To connect this app to your Google Sheet so all bookings are shared in real time, you need to set up a Google Apps Script. This takes about 5 minutes and only needs to be done once.</div>
+    <div class="setup-step"><div class="setup-num">1</div><div class="setup-step-text">Open your Google Sheet: <a href="https://docs.google.com/spreadsheets/d/1yeqY85RYRx87Xr2VOj-Aw9rbz9XyxaK3oewybuF-D60/edit" target="_blank" style="color:var(--purple)">Click here to open it</a></div></div>
+    <div class="setup-step"><div class="setup-num">2</div><div class="setup-step-text">Click <strong>Extensions</strong> in the top menu → then click <strong>Apps Script</strong></div></div>
+    <div class="setup-step"><div class="setup-num">3</div><div class="setup-step-text">Delete everything in the editor and paste the script below, then click the <strong>Save</strong> (💾) icon</div></div>
+    <div class="setup-step"><div class="setup-num">4</div><div class="setup-step-text">Click <strong>Deploy</strong> → <strong>New deployment</strong> → set type to <strong>Web app</strong> → set "Who has access" to <strong>Anyone</strong> → click <strong>Deploy</strong> → copy the Web App URL</div></div>
+    <div class="setup-step"><div class="setup-num">5</div><div class="setup-step-text">Paste the Web App URL into the box below and click Save</div></div>
+    <div style="background:var(--bg-medium);border-radius:var(--radius);padding:12px;margin-bottom:20px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:180px;overflow-y:auto;line-height:1.5" id="script-display"></div>
+    <button onclick="copyScript()" class="btn btn-secondary" style="width:100%;margin-bottom:16px">📋 Copy Apps Script code</button>
+    <div class="form-group">
+      <label class="form-label">Paste your Web App URL here</label>
+      <input type="text" class="form-input" id="script-url-input" placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+    <button class="btn btn-primary" onclick="saveScriptUrl()">Save and connect</button>
+  </div>
+</div>
+
+<div id="main-app" class="hidden">
+  <div class="header">
+    <div class="header-left">
+      <div class="header-logo">A</div>
+      <div>
+        <div class="header-title">Programme Abhyudaya</div>
+        <div class="header-sub">IDP Discussion Booking</div>
+      </div>
+    </div>
+    <button class="admin-toggle" onclick="toggleView()">⚙ Admin</button>
+  </div>
+
+  <!-- PARTICIPANT VIEW -->
+  <div id="participant-view">
+    <div class="container">
+      <div class="steps" id="steps-bar">
+        <div class="step-item active" id="step-1-ind"><div class="step-circle" id="sc1">1</div><div class="step-label">Your details</div></div>
+        <div class="step-line"></div>
+        <div class="step-item" id="step-2-ind"><div class="step-circle" id="sc2">2</div><div class="step-label">Choose a slot</div></div>
+        <div class="step-line"></div>
+        <div class="step-item" id="step-3-ind"><div class="step-circle" id="sc3">3</div><div class="step-label">Confirm</div></div>
+      </div>
+
+      <div id="pstep1">
+        <div class="card">
+          <div class="card-title">Book your IDP discussion</div>
+          <div class="card-sub">Enter your details to get started. Your SUD Life email will be used to manage your booking.</div>
+          <div class="form-group">
+            <label class="form-label">Full name</label>
+            <input type="text" class="form-input" id="p-name" placeholder="e.g. Rajesh Kumar">
+            <div class="error-msg" id="err-name">Please enter your full name.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">SUD Life email</label>
+            <input type="email" class="form-input" id="p-email" placeholder="name@sudlife.in">
+            <div class="error-msg" id="err-email">Please enter a valid email.</div>
+            <div class="error-msg" id="err-locked">You have already used your one reschedule. No further changes are permitted.</div>
+          </div>
+          <button class="btn btn-primary" onclick="goToStep2()">Continue →</button>
+        </div>
+        <div id="existing-panel" class="hidden"></div>
+      </div>
+
+      <div id="pstep2" class="hidden">
+        <div class="notice notice-purple">Slots available <strong>8 June – 30 June 2026</strong>. All sessions are 60 minutes. First come, first served.</div>
+        <div class="card">
+          <div class="card-title">Select a slot</div>
+          <div class="card-sub">Choose a time that works for you from the available slots below.</div>
+          <div class="slots-filter" id="week-filters"></div>
+          <div class="slots-grid" id="slots-grid"></div>
+          <button class="btn btn-primary" id="step2-next" disabled onclick="goToStep3()">Review booking →</button>
+        </div>
+      </div>
+
+      <div id="pstep3" class="hidden">
+        <div class="card">
+          <div class="card-title">Review your booking</div>
+          <div class="card-sub">Please confirm the details below.</div>
+          <table class="review-table" id="review-table"></table>
+          <div class="divider"></div>
+          <div class="notice notice-amber"><strong>Cancellation policy:</strong> You may cancel and reschedule once, at least 24 hours before your session. After rescheduling, no further changes are permitted.</div>
+          <button class="btn btn-primary mt-16" onclick="confirmBooking()">Confirm booking</button>
+        </div>
+      </div>
+
+      <div id="pstep4" class="hidden">
+        <div class="card">
+          <div class="success-wrap">
+            <div class="success-icon">✓</div>
+            <div class="success-title">Session confirmed</div>
+            <div class="success-sub" id="success-detail"></div>
+            <div class="btn-row">
+              <button class="btn btn-success" onclick="downloadICS('participant')">⬇ Add to my Outlook</button>
+              <button class="btn btn-secondary" onclick="downloadICS('consultant')">⬇ Consultant invite</button>
+            </div>
+            <div class="text-muted mt-8">Open the .ics file to add this session to your Outlook calendar.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN VIEW -->
+  <div id="admin-view" class="hidden">
+    <div class="admin-wrap">
+      <div style="margin-bottom:20px">
+        <div style="font-size:18px;font-weight:500;margin-bottom:4px">Admin panel</div>
+        <div style="font-size:13px;color:var(--text-muted)">Manage slots and view bookings. All data syncs live to your Google Sheet.</div>
+      </div>
+      <div class="admin-tabs">
+        <button class="admin-tab active" onclick="switchAdminTab('slots',this)">Manage slots</button>
+        <button class="admin-tab" onclick="switchAdminTab('bookings',this)">All bookings</button>
+        <button class="admin-tab" onclick="switchAdminTab('link',this)">Booking link</button>
+      </div>
+      <div id="admin-slots">
+        <div class="admin-section-title">Add available slots</div>
+        <div class="admin-section-sub">Add dates and times when Sudarshan or Anvita are available. Weekdays only, 8–30 June 2026.</div>
+        <div class="add-slot-form">
+          <div class="form-group">
+            <label class="form-label">Consultant</label>
+            <select class="consultant-select" id="new-consultant">
+              <option value="SB">Sudarshan Bose</option>
+              <option value="AK">Anvita Kishore</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-input" id="new-date" min="2026-06-08" max="2026-06-30" style="width:160px">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Start time</label>
+            <input type="time" class="form-input" id="new-time" style="width:130px">
+          </div>
+          <button class="btn btn-primary" style="width:auto;margin-top:20px" onclick="addSlot()">+ Add slot</button>
+        </div>
+        <div class="admin-section-title" style="margin-bottom:12px">All slots</div>
+        <div class="slots-list" id="admin-slots-list"><div class="empty-state">Loading slots...</div></div>
+      </div>
+      <div id="admin-bookings" class="hidden">
+        <div class="admin-section-title">All bookings</div>
+        <div class="admin-section-sub">Live from Google Sheet. All participant bookings, cancellations and reschedules.</div>
+        <div id="bookings-table-wrap"><div class="empty-state">Loading bookings...</div></div>
+      </div>
+      <div id="admin-link" class="hidden">
+        <div class="admin-section-title">Booking link</div>
+        <div class="admin-section-sub">Share this single link with all participants in the IDP preparation email.</div>
+        <div class="notice notice-purple" style="cursor:pointer;word-break:break-all" onclick="copyLink()" id="link-display">📋 Click to copy: <strong id="link-text"></strong></div>
+        <div class="notice notice-teal"><strong>How to use:</strong> All participants use the same link. The system tracks each participant by their SUD Life email and shows all available slots from both Sudarshan and Anvita.</div>
+        <div class="divider"></div>
+        <div style="font-size:13px;color:var(--text-muted)">Need to reconnect the Google Sheet? <button onclick="localStorage.removeItem('abhy_script_url');location.reload()" style="background:none;border:none;color:var(--purple);cursor:pointer;font-size:13px;padding:0">Reset connection</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL_KEY = 'abhy_script_url';
+const CONSULTANTS = {
+  SB: { name: 'Sudarshan Bose', initials: 'SB' },
+  AK: { name: 'Anvita Kishore', initials: 'AK' }
+};
+
+const APPS_SCRIPT = `function doGet(e) {
+  return handleRequest(e);
+}
+function doPost(e) {
+  return handleRequest(e);
+}
+function handleRequest(e) {
+  var ss = SpreadsheetApp.openById('1yeqY85RYRx87Xr2VOj-Aw9rbz9XyxaK3oewybuF-D60');
+  var action = (e.parameter && e.parameter.action) || (e.postData && JSON.parse(e.postData.contents).action);
+  var data = e.postData ? JSON.parse(e.postData.contents) : e.parameter;
+  var result = {};
+  
+  if (action === 'getSlots') {
+    var sh = getOrCreate(ss, 'Slots', ['id','consultantId','date','time','booked','bookedBy']);
+    result = { slots: sheetToArray(sh) };
+  } else if (action === 'getBookings') {
+    var sh = getOrCreate(ss, 'Bookings', ['id','name','email','consultantId','slotId','date','time','status','cancelCount','createdAt','cancelledAt','rebookDeadline']);
+    result = { bookings: sheetToArray(sh) };
+  } else if (action === 'addSlot') {
+    var sh = getOrCreate(ss, 'Slots', ['id','consultantId','date','time','booked','bookedBy']);
+    sh.appendRow([data.id, data.consultantId, data.date, data.time, 'false', '']);
+    result = { ok: true };
+  } else if (action === 'updateSlot') {
+    var sh = getOrCreate(ss, 'Slots', ['id','consultantId','date','time','booked','bookedBy']);
+    updateRow(sh, data.id, { booked: data.booked, bookedBy: data.bookedBy || '' });
+    result = { ok: true };
+  } else if (action === 'removeSlot') {
+    var sh = getOrCreate(ss, 'Slots', ['id','consultantId','date','time','booked','bookedBy']);
+    deleteRow(sh, data.id);
+    result = { ok: true };
+  } else if (action === 'addBooking') {
+    var sh = getOrCreate(ss, 'Bookings', ['id','name','email','consultantId','slotId','date','time','status','cancelCount','createdAt','cancelledAt','rebookDeadline']);
+    sh.appendRow([data.id, data.name, data.email, data.consultantId, data.slotId, data.date, data.time, data.status, data.cancelCount || 0, data.createdAt, '', '']);
+    result = { ok: true };
+  } else if (action === 'updateBooking') {
+    var sh = getOrCreate(ss, 'Bookings', ['id','name','email','consultantId','slotId','date','time','status','cancelCount','createdAt','cancelledAt','rebookDeadline']);
+    updateRow(sh, data.id, data.updates);
+    result = { ok: true };
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function getOrCreate(ss, name, headers) {
+  var sh = ss.getSheetByName(name);
+  if (!sh) { sh = ss.insertSheet(name); sh.appendRow(headers); }
+  return sh;
+}
+
+function sheetToArray(sh) {
+  var data = sh.getDataRange().getValues();
+  if (data.length < 2) return [];
+  var headers = data[0];
+  return data.slice(1).map(function(row) {
+    var obj = {};
+    headers.forEach(function(h, i) { obj[h] = row[i]; });
+    return obj;
+  });
+}
+
+function updateRow(sh, id, updates) {
+  var data = sh.getDataRange().getValues();
+  var headers = data[0];
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(id)) {
+      Object.keys(updates).forEach(function(key) {
+        var col = headers.indexOf(key);
+        if (col > -1) sh.getRange(i + 1, col + 1).setValue(updates[key]);
+      });
+      return;
+    }
+  }
+}
+
+function deleteRow(sh, id) {
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(id)) { sh.deleteRow(i + 1); return; }
+  }
+}`;
+
+document.getElementById('script-display').textContent = APPS_SCRIPT;
+
+let SCRIPT_URL = localStorage.getItem(SCRIPT_URL_KEY) || '';
+
+let state = {
+  view: 'participant', step: 1, name: '', email: '',
+  selectedSlot: null, confirmedSlot: null, confirmedBooking: null,
+  weekFilter: 'all', adminTab: 'slots', existingBooking: null,
+  slots: [], bookings: []
+};
+
+function api(params) {
+  showLoading(true);
+  return fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify(params)
+  })
+  .then(r => r.json())
+  .catch(() => fetch(SCRIPT_URL + '?action=' + params.action))
+  .finally(() => showLoading(false));
+}
+
+function showLoading(show, msg) {
+  const el = document.getElementById('loading-overlay');
+  el.classList.toggle('hidden', !show);
+  if (msg) el.querySelector('.loading-text').textContent = msg;
+}
+
+function copyScript() {
+  navigator.clipboard.writeText(APPS_SCRIPT).then(() => {
+    const btn = document.querySelector('#setup-needed .btn-secondary');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = '📋 Copy Apps Script code'; }, 2000);
+  });
+}
+
+function saveScriptUrl() {
+  const url = document.getElementById('script-url-input').value.trim();
+  if (!url || !url.includes('script.google.com')) { alert('Please paste a valid Google Apps Script Web App URL.'); return; }
+  localStorage.setItem(SCRIPT_URL_KEY, url);
+  SCRIPT_URL = url;
+  init();
+}
+
+function init() {
+  if (!SCRIPT_URL) {
+    showLoading(false);
+    document.getElementById('setup-needed').classList.remove('hidden');
+    return;
+  }
+  showLoading(true, 'Connecting to Google Sheet...');
+  api({ action: 'getSlots' }).then(res => {
+    state.slots = (res.slots || []).map(normalizeSlot);
+    return api({ action: 'getBookings' });
+  }).then(res => {
+    state.bookings = res.bookings || [];
+    document.getElementById('setup-needed').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+    showLoading(false);
+    updateStepUI();
+  }).catch(() => {
+    showLoading(false);
+    document.getElementById('setup-needed').classList.remove('hidden');
+  });
+}
+
+function normalizeSlot(s) {
+  return { ...s, booked: s.booked === true || s.booked === 'true', date: String(s.date), time: String(s.time) };
+}
+
+function formatDate(d) {
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+function formatTime(t) {
+  const ts = String(t).replace(/[^0-9:]/g, '');
+  const parts = ts.split(':');
+  const h = parseInt(parts[0] || 0), m = parseInt(parts[1] || 0);
+  const fmt = (hh, mm) => ((hh % 12) || 12) + ':' + String(mm).padStart(2,'0') + (hh >= 12 ? ' pm' : ' am');
+  const end = new Date(2026,0,1,h,m+60);
+  return fmt(h,m) + ' – ' + fmt(end.getHours(),end.getMinutes());
+}
+function getWeekLabel(d) {
+  const day = new Date(d+'T00:00:00').getDate();
+  if (day <= 14) return 'Week 1 (8–14 Jun)';
+  if (day <= 21) return 'Week 2 (15–21 Jun)';
+  return 'Week 3 (22–30 Jun)';
+}
+function isWeekend(d) { const day = new Date(d+'T00:00:00').getDay(); return day===0||day===6; }
+function hoursUntil(d, t) { return (new Date(d+'T'+t+':00') - new Date()) / 3600000; }
+
+function toggleView() {
+  state.view = state.view === 'participant' ? 'admin' : 'participant';
+  document.getElementById('participant-view').classList.toggle('hidden', state.view !== 'participant');
+  document.getElementById('admin-view').classList.toggle('hidden', state.view !== 'admin');
+  document.querySelector('.admin-toggle').textContent = state.view === 'admin' ? '← Booking' : '⚙ Admin';
+  if (state.view === 'admin') refreshAndRenderAdmin();
+}
+
+function updateStepUI() {
+  [1,2,3].forEach(i => {
+    const el = document.getElementById('step-'+i+'-ind');
+    const sc = document.getElementById('sc'+i);
+    el.className = 'step-item' + (i===state.step?' active':i<state.step?' done':'');
+    sc.textContent = i < state.step ? '✓' : i;
+  });
+  ['pstep1','pstep2','pstep3','pstep4'].forEach((id,idx) => {
+    document.getElementById(id).classList.toggle('hidden', idx+1 !== state.step);
+  });
+}
+
+function goToStep2() {
+  const name = document.getElementById('p-name').value.trim();
+  const email = document.getElementById('p-email').value.trim().toLowerCase();
+  ['err-name','err-email','err-locked'].forEach(id => document.getElementById(id).classList.remove('show'));
+  document.getElementById('existing-panel').classList.add('hidden');
+  if (!name) { document.getElementById('err-name').classList.add('show'); return; }
+  if (!email || !email.includes('@')) { document.getElementById('err-email').classList.add('show'); return; }
+
+  showLoading(true, 'Checking your details...');
+  api({ action: 'getBookings' }).then(res => {
+    state.bookings = res.bookings || [];
+    showLoading(false);
+    const existing = state.bookings.find(b => String(b.email).toLowerCase() === email && b.status !== 'cancelled_locked');
+    const locked = state.bookings.find(b => String(b.email).toLowerCase() === email && b.status === 'cancelled_locked');
+    if (locked) { document.getElementById('err-locked').classList.add('show'); return; }
+    if (existing && (existing.status === 'confirmed' || existing.status === 'rescheduled')) {
+      state.existingBooking = existing;
+      state.name = name; state.email = email;
+      showExistingBooking(existing); return;
+    }
+    state.name = name; state.email = email;
+    state.step = 2; updateStepUI();
+    refreshSlots();
+  }).catch(() => { showLoading(false); alert('Connection error. Please try again.'); });
+}
+
+function showExistingBooking(b) {
+  const c = CONSULTANTS[b.consultantId];
+  const canCancel = hoursUntil(String(b.date), String(b.time).replace(/[^0-9:]/g,'').substring(0,5)) > 24 && parseInt(b.cancelCount||0) < 1;
+  const panel = document.getElementById('existing-panel');
+  panel.innerHTML = `
+    <div class="notice notice-amber"><strong>You already have a booking.</strong> See details below.</div>
+    <div class="booking-status-card">
+      <div class="status-badge ${b.status==='rescheduled'?'badge-rescheduled':'badge-confirmed'}">${b.status==='rescheduled'?'↩ Rescheduled':'✓ Confirmed'}</div>
+      <table class="review-table" style="margin-bottom:16px">
+        <tr><td>Consultant</td><td>${c?.name||b.consultantId}</td></tr>
+        <tr><td>Date</td><td>${formatDate(String(b.date))}</td></tr>
+        <tr><td>Time</td><td>${formatTime(String(b.time))}</td></tr>
+        <tr><td>Duration</td><td>60 minutes</td></tr>
+      </table>
+      ${canCancel ? `
+        <div class="notice notice-amber" style="margin-bottom:12px">You may cancel and reschedule once. This cannot be used again.</div>
+        <button class="btn btn-danger" onclick="cancelBooking('${b.id}')">Cancel this booking</button>
+      ` : parseInt(b.cancelCount||0) >= 1 ? `
+        <div class="notice notice-red">You have used your one reschedule. No further changes are permitted.</div>
+      ` : `
+        <div class="notice notice-red">Cancellation is not permitted within 24 hours of your session.</div>
+      `}
+    </div>`;
+  panel.classList.remove('hidden');
+  const slot = state.slots.find(s => s.id === b.slotId);
+  if (slot) { state.confirmedSlot = slot; state.confirmedBooking = b; }
+}
+
+function cancelBooking(bookingId) {
+  if (!confirm('Cancel your booking? You will have 24 hours to rebook. This can only be done once.')) return;
+  const b = state.bookings.find(x => x.id === bookingId);
+  if (!b) return;
+  const rebookDeadline = new Date(Date.now() + 24*3600000).toISOString();
+  showLoading(true, 'Cancelling booking...');
+  Promise.all([
+    api({ action: 'updateBooking', id: bookingId, updates: { status: 'cancelled', cancelCount: 1, cancelledAt: new Date().toISOString(), rebookDeadline } }),
+    api({ action: 'updateSlot', id: b.slotId, booked: 'false', bookedBy: '' })
+  ]).then(() => api({ action: 'getSlots' })).then(res => {
+    state.slots = (res.slots||[]).map(normalizeSlot);
+    showLoading(false);
+    state.existingBooking = { ...b, status: 'cancelled', cancelCount: 1, rebookDeadline };
+    state.step = 2; updateStepUI();
+    document.getElementById('existing-panel').classList.add('hidden');
+    const deadline = new Date(rebookDeadline).toLocaleString('en-IN');
+    const c = document.querySelector('#participant-view .container');
+    const a = document.createElement('div');
+    a.className = 'notice notice-amber';
+    a.style.marginBottom = '16px';
+    a.innerHTML = `<strong>Booking cancelled.</strong> You have until <strong>${deadline}</strong> to rebook. After this, no further booking is possible.`;
+    c.insertBefore(a, c.firstChild);
+    renderSlots();
+  }).catch(() => { showLoading(false); alert('Error. Please try again.'); });
+}
+
+function refreshSlots() {
+  showLoading(true, 'Loading available slots...');
+  api({ action: 'getSlots' }).then(res => {
+    state.slots = (res.slots||[]).map(normalizeSlot);
+    showLoading(false);
+    renderSlots();
+  }).catch(() => { showLoading(false); renderSlots(); });
+}
+
+function renderSlots() {
+  const slots = state.slots.filter(s => {
+    return s.date >= '2026-06-08' && s.date <= '2026-06-30' && !isWeekend(String(s.date));
+  }).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+
+  const weeks = ['all','Week 1 (8–14 Jun)','Week 2 (15–21 Jun)','Week 3 (22–30 Jun)'];
+  document.getElementById('week-filters').innerHTML = weeks.map(w =>
+    `<button class="filter-btn ${state.weekFilter===w?'active':''}" onclick="setWeekFilter('${w}')">${w==='all'?'All dates':w}</button>`
+  ).join('');
+
+  const filtered = state.weekFilter==='all' ? slots : slots.filter(s => getWeekLabel(String(s.date))===state.weekFilter);
+  const grid = document.getElementById('slots-grid');
+  if (!filtered.length) { grid.innerHTML = '<div class="no-slots">No slots available for this period.</div>'; return; }
+  grid.innerHTML = filtered.map(s => {
+    const c = CONSULTANTS[s.consultantId];
+    const sel = state.selectedSlot && state.selectedSlot.id === s.id;
+    return `<div class="slot-card ${s.booked?'booked':''} ${sel?'selected':''}" onclick="${s.booked?'':'selectSlot(\''+s.id+'\')'}">
+      <div class="slot-consultant">${c?.name||s.consultantId}</div>
+      <div class="slot-date">${formatDate(String(s.date))}</div>
+      <div class="slot-time">${formatTime(String(s.time))}</div>
+      ${s.booked?'<div class="slot-booked-tag">Booked</div>':''}
+    </div>`;
+  }).join('');
+}
+
+function setWeekFilter(w) { state.weekFilter = w; renderSlots(); }
+function selectSlot(id) {
+  state.selectedSlot = state.slots.find(s => s.id === id);
+  document.getElementById('step2-next').disabled = false;
+  renderSlots();
+}
+
+function goToStep3() {
+  if (!state.selectedSlot) return;
+  const c = CONSULTANTS[state.selectedSlot.consultantId];
+  document.getElementById('review-table').innerHTML = `
+    <tr><td>Name</td><td>${state.name}</td></tr>
+    <tr><td>Email</td><td>${state.email}</td></tr>
+    <tr><td>Consultant</td><td>${c?.name}</td></tr>
+    <tr><td>Date</td><td>${formatDate(String(state.selectedSlot.date))}</td></tr>
+    <tr><td>Time</td><td>${formatTime(String(state.selectedSlot.time))}</td></tr>
+    <tr><td>Duration</td><td>60 minutes</td></tr>`;
+  state.step = 3; updateStepUI();
+}
+
+function confirmBooking() {
+  const slot = state.slots.find(s => s.id === state.selectedSlot.id);
+  if (!slot || slot.booked) { alert('This slot was just taken. Please choose another.'); state.step=2; updateStepUI(); refreshSlots(); return; }
+
+  const cancelledBooking = state.bookings.find(b => String(b.email).toLowerCase()===state.email && b.status==='cancelled');
+  if (cancelledBooking) {
+    const deadline = new Date(cancelledBooking.rebookDeadline);
+    if (new Date() > deadline) {
+      api({ action:'updateBooking', id:cancelledBooking.id, updates:{status:'cancelled_locked'} });
+      alert('Your 24-hour rebook window has passed. No further booking is possible.'); return;
+    }
+  }
+
+  const isReschedule = !!cancelledBooking;
+  const booking = {
+    id: 'b_' + Date.now(),
+    name: state.name, email: state.email,
+    consultantId: state.selectedSlot.consultantId,
+    slotId: state.selectedSlot.id,
+    date: state.selectedSlot.date,
+    time: state.selectedSlot.time,
+    status: isReschedule ? 'rescheduled' : 'confirmed',
+    cancelCount: isReschedule ? 1 : 0,
+    createdAt: new Date().toISOString()
+  };
+
+  showLoading(true, 'Confirming your booking...');
+  const ops = [
+    api({ action:'addBooking', ...booking }),
+    api({ action:'updateSlot', id:slot.id, booked:'true', bookedBy:state.email })
+  ];
+  if (cancelledBooking) ops.push(api({ action:'updateBooking', id:cancelledBooking.id, updates:{status:'cancelled_locked'} }));
+
+  Promise.all(ops).then(() => {
+    showLoading(false);
+    state.confirmedSlot = state.selectedSlot;
+    state.confirmedBooking = booking;
+    const c = CONSULTANTS[state.selectedSlot.consultantId];
+    document.getElementById('success-detail').textContent = formatDate(String(state.selectedSlot.date)) + ' · ' + formatTime(String(state.selectedSlot.time)) + ' · ' + c.name;
+    state.step = 4; updateStepUI();
+  }).catch(() => { showLoading(false); alert('Error confirming booking. Please try again.'); });
+}
+
+function makeICS(forConsultant) {
+  const slot = state.confirmedSlot; const b = state.confirmedBooking;
+  if (!slot || !b) return null;
+  const c = CONSULTANTS[slot.consultantId];
+  const d = String(slot.date); const t = String(slot.time).substring(0,5);
+  const [y,mo,dd] = d.split('-').map(Number);
+  const [h,mi] = t.split(':').map(Number);
+  const pad = n => String(n).padStart(2,'0');
+  const dtS = `${y}${pad(mo)}${pad(dd)}T${pad(h)}${pad(mi)}00`;
+  const dtE = `${y}${pad(mo)}${pad(dd)}T${pad(h+1)}${pad(mi)}00`;
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Abhyudaya IDP//SUD Life//EN','BEGIN:VEVENT',
+    `UID:abhy-${b.id}@sudlife.in`,`DTSTART:${dtS}`,`DTEND:${dtE}`,
+    `SUMMARY:IDP Discussion – ${b.name} with ${c.name} | Programme Abhyudaya`,
+    `DESCRIPTION:Individual Development Plan discussion\\nParticipant: ${b.name} (${b.email})\\nConsultant: ${c.name}`,
+    `ORGANIZER;CN="${c.name}":mailto:${forConsultant?b.email:'wtw@wtwco.com'}`,
+    `ATTENDEE;CN="${b.name}":mailto:${forConsultant?'wtw@wtwco.com':b.email}`,
+    'STATUS:CONFIRMED','END:VEVENT','END:VCALENDAR'].join('\r\n');
+}
+
+function downloadICS(who) {
+  const ics = makeICS(who==='consultant');
+  if (!ics) return;
+  const blob = new Blob([ics], { type:'text/calendar' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `IDP_${who==='consultant'?'Consultant':'My'}_Invite_${state.confirmedSlot.date}.ics`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function refreshAndRenderAdmin() {
+  showLoading(true, 'Loading data...');
+  Promise.all([api({action:'getSlots'}), api({action:'getBookings'})]).then(([sr, br]) => {
+    state.slots = (sr.slots||[]).map(normalizeSlot);
+    state.bookings = br.bookings || [];
+    showLoading(false);
+    renderAdminSlots();
+  }).catch(() => showLoading(false));
+}
+
+function switchAdminTab(tab, el) {
+  state.adminTab = tab;
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['admin-slots','admin-bookings','admin-link'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('admin-'+tab).classList.remove('hidden');
+  if (tab==='bookings') renderBookingsTable();
+  if (tab==='slots') renderAdminSlots();
+  if (tab==='link') document.getElementById('link-text').textContent = window.location.href.split('?')[0];
+}
+
+function addSlot() {
+  const cId = document.getElementById('new-consultant').value;
+  const date = document.getElementById('new-date').value;
+  const time = document.getElementById('new-time').value;
+  if (!date||!time) { alert('Please select a date and time.'); return; }
+  if (date<'2026-06-08'||date>'2026-06-30') { alert('Slots must be between 8–30 June 2026.'); return; }
+  if (isWeekend(date)) { alert('Please select a weekday.'); return; }
+  const id = cId+'_'+date.replace(/-/g,'')+'_'+time.replace(':','');
+  if (state.slots.find(s=>s.id===id)) { alert('This slot already exists.'); return; }
+  showLoading(true, 'Adding slot...');
+  api({ action:'addSlot', id, consultantId:cId, date, time, booked:'false', bookedBy:'' }).then(() => {
+    state.slots.push({ id, consultantId:cId, date, time, booked:false, bookedBy:'' });
+    showLoading(false);
+    renderAdminSlots();
+    document.getElementById('new-date').value='';
+    document.getElementById('new-time').value='';
+  }).catch(()=>{ showLoading(false); alert('Error adding slot.'); });
+}
+
+function renderAdminSlots() {
+  const slots = state.slots.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const list = document.getElementById('admin-slots-list');
+  if (!slots.length) { list.innerHTML='<div class="empty-state">No slots added yet.</div>'; return; }
+  list.innerHTML = slots.map(s => {
+    const c = CONSULTANTS[s.consultantId];
+    return `<div class="slot-admin-row">
+      <div class="slot-admin-left">
+        <div class="slot-admin-name">${c?.name||s.consultantId}</div>
+        <div class="slot-admin-dt">${formatDate(String(s.date))} · ${formatTime(String(s.time))}</div>
+        <div class="slot-admin-status ${s.booked?'status-booked':'status-free'}">${s.booked?'● Booked by '+(s.bookedBy||'—'):'○ Available'}</div>
+      </div>
+      ${!s.booked?`<button class="icon-btn" onclick="removeSlot('${s.id}')" title="Remove">✕</button>`:''}
+    </div>`;
+  }).join('');
+}
+
+function removeSlot(id) {
+  if (!confirm('Remove this slot?')) return;
+  showLoading(true,'Removing slot...');
+  api({ action:'removeSlot', id }).then(()=>{
+    state.slots = state.slots.filter(s=>s.id!==id);
+    showLoading(false); renderAdminSlots();
+  }).catch(()=>{ showLoading(false); alert('Error removing slot.'); });
+}
+
+function renderBookingsTable() {
+  const bookings = [...state.bookings].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+  const wrap = document.getElementById('bookings-table-wrap');
+  if (!bookings.length) { wrap.innerHTML='<div class="empty-state">No bookings yet.</div>'; return; }
+  const tag = s => { const m={confirmed:['tag-confirmed','Confirmed'],rescheduled:['tag-rescheduled','Rescheduled'],cancelled:['tag-cancelled','Cancelled'],cancelled_locked:['tag-locked','Locked']}; const [c,l]=m[s]||['tag-confirmed',s]; return `<span class="pill-tag ${c}">${l}</span>`; };
+  wrap.innerHTML = `<table class="bookings-table"><thead><tr><th>Participant</th><th>Consultant</th><th>Date & Time</th><th>Status</th></tr></thead><tbody>
+    ${bookings.map(b=>`<tr>
+      <td>${b.name}<br><span style="font-size:11px;color:var(--text-faint)">${b.email}</span></td>
+      <td>${CONSULTANTS[b.consultantId]?.name||b.consultantId}</td>
+      <td>${formatDate(String(b.date))}<br><span style="font-size:11px;color:var(--text-muted)">${formatTime(String(b.time))}</span></td>
+      <td>${tag(b.status)}</td>
+    </tr>`).join('')}
+  </tbody></table>`;
+}
+
+function copyLink() {
+  const url = document.getElementById('link-text').textContent;
+  navigator.clipboard.writeText(url).then(()=>{
+    const el = document.getElementById('link-display');
+    const orig = el.innerHTML;
+    el.innerHTML = '✓ Link copied!';
+    setTimeout(()=>{ el.innerHTML=orig; },2000);
+  });
+}
+
+init();
+</script>
+</body>
+</html>
